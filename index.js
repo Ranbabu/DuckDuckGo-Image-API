@@ -5,43 +5,42 @@ export default {
       "Content-Type": "application/json"
     };
 
-    // CORS प्रीफ्लाइट रिक्वेस्ट हैंडल करना
     if (request.method === "OPTIONS") return new Response(null, { headers });
 
     const url = new URL(request.url);
     const query = url.searchParams.get("q");
 
-    // अगर कोई हेडलाइन नहीं भेजी गई
     if (!query) {
-      return new Response(JSON.stringify({ error: "क्वेरी खाली है। कृपया ?q=... का इस्तेमाल करें" }), { status: 400, headers });
+      return new Response(JSON.stringify({ error: "क्वेरी खाली है।" }), { status: 400, headers });
     }
 
     try {
-      // DuckDuckGo से असली न्यूज़ इमेजेज खोजना
-      const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query + " news photos")}`;
+      // Bing Image Search का इस्तेमाल (असली और HD इमेजेज के लिए)
+      const searchUrl = `https://www.bing.com/images/search?q=${encodeURIComponent(query)}&form=HDRSC2`;
       
       const response = await fetch(searchUrl, {
-        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
+        headers: { 
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36" 
+        }
       });
       const html = await response.text();
 
-      // HTML से इमेज लिंक निकालने का जुगाड़
-      const imageRegex = /<img[^>]+src="([^">]+)"/g;
+      // Bing के कोड से असली हाई-क्वालिटी इमेज (murl) निकालना
+      const imageRegex = /murl&quot;:&quot;(.*?)&quot;/g;
       let images = [];
       let match;
       
       while ((match = imageRegex.exec(html)) !== null) {
         let imgUrl = match[1];
-        if (imgUrl.startsWith("//")) imgUrl = "https:" + imgUrl;
-        
-        // फालतू लोगो या आइकन हटाने के लिए
-        if (!imgUrl.includes("logo") && !imgUrl.includes("icon")) { 
+        // फालतू लोगो और छोटे आइकन हटाने के लिए फ़िल्टर
+        if (imgUrl.startsWith("http") && !images.includes(imgUrl)) {
           images.push(imgUrl);
         }
+        // टॉप 8 सबसे बेहतरीन इमेजेज लेंगे
+        if(images.length >= 8) break; 
       }
 
-      // टॉप 5 रियल इमेजेज का रिजल्ट वापस करें
-      return new Response(JSON.stringify({ images: images.slice(0, 5) }), { headers });
+      return new Response(JSON.stringify({ images: images }), { headers });
     } catch (error) {
       return new Response(JSON.stringify({ error: "इमेज खोजने में समस्या आ रही है।" }), { status: 500, headers });
     }
