@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aryan News Tech - Automation Hub</title>
+    <style>
+        body { font-family: sans-serif; background: #e9ecef; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        textarea { width: 100%; height: 150px; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 15px; box-sizing: border-box; }
+        button { background: #007bff; color: white; padding: 15px; width: 100%; font-size: 18px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-bottom: 15px; }
+        button:hover { background: #0056b3; }
+        .news-output { background: #f8f9fa; padding: 15px; border-radius: 5px; font-size: 16px; line-height: 1.6; white-space: pre-wrap; margin-bottom: 15px; border: 1px solid #ddd; }
+        .image-gallery { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; border-top: 1px solid #ddd; margin-top: 10px; }
+        .image-gallery img { height: 120px; border-radius: 5px; object-fit: cover; border: 1px solid #ccc; }
+        #loading { display: none; text-align: center; font-size: 16px; color: #dc3545; font-weight: bold; margin-bottom: 15px; }
+        .search-box { display: flex; gap: 10px; margin-bottom: 20px; }
+        .search-box input { flex: 1; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; }
+        .search-box button { width: auto; margin: 0; background: #28a745; }
+        .search-box button:hover { background: #218838; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 style="text-align:center; color: #d32f2f;">Aryan News Tech - Auto Script & Image Hub</h2>
+    
+    <label style="font-weight: bold; color: #333;">Apna Custom Prompt Yahan Likhein:</label>
+    <textarea id="customPrompt">Aaj ki top 5 khabre taiyar karein. Har khabar 5-6 line ki ho.
+Sakht nirdesh: 
+- Text to Speech (TTS) ke liye script ekdam clean honi chahiye.
+- Koi bracket [], koi extra hosting line, intro ya outro na ho. 
+- Sirf shuddh news content likhkar dein aur news anchor ke style mein likhein.</textarea>
+    
+    <button onclick="generateNews()">News Script Generate Karein</button>
+    <div id="loading">Gemini 2.5 Flash news generate kar raha hai, kripya pratiksha karein...</div>
+    
+    <div class="news-output" id="newsOutput">Aapki script yahan dikhayi degi...</div>
+
+    <hr>
+
+    <h3 style="color: #333;">Manual Image Search (Real News Images)</h3>
+    <div class="search-box">
+        <input type="text" id="imageQuery" placeholder="Khabar ki headline yahan dalein (jaise: Cricket World Cup News)...">
+        <button onclick="fetchImages()">Image Khojein</button>
+    </div>
+    
+    <div class="image-gallery" id="imageGallery">Images yahan dikhayi dengi...</div>
+</div>
+
+<script>
+    // Aapke dono Live URLs yahan add kar diye gaye hain
+    const NEWS_API_URL = "https://aryan-gemini-api.babu902654.workers.dev"; 
+    const IMAGE_API_URL = "https://duckduckgo-image-api.babu902654.workers.dev";
+
+    async function generateNews() {
+        const promptText = document.getElementById('customPrompt').value;
+        if(!promptText.trim()) { alert("Prompt khali nahi ho sakta!"); return; }
+
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('newsOutput').innerHTML = '';
+
+        try {
+            const response = await fetch(NEWS_API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prompt: promptText })
+            });
+            
+            const data = await response.json();
+            if(data.result) {
+                document.getElementById('newsOutput').innerHTML = data.result;
+            } else {
+                document.getElementById('newsOutput').innerHTML = "Error: " + data.error;
+            }
+        } catch (error) {
+            document.getElementById('newsOutput').innerHTML = "Network ya API error aa gayi hai. Kripya check karein ki API Key sahi se set hai ya nahi.";
+        }
+        document.getElementById('loading').style.display = 'none';
+    }
+
+    async function fetchImages() {
+        const query = document.getElementById('imageQuery').value;
+        if(!query.trim()) { alert("Pehle headline dalein!"); return; }
+
+        document.getElementById('imageGallery').innerHTML = "Image khoji ja rahi hain...";
+
+        try {
+            const response = await fetch(`${IMAGE_API_URL}?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            
+            let imgHTML = "";
+            if(data.images && data.images.length > 0) {
+                data.images.forEach(imgUrl => {
+                    // Taki error wali image na aaye, onerror laga diya hai
+                    imgHTML += `<img src="${imgUrl}" alt="News Image" onerror="this.style.display='none'">`;
+                });
+            } else {
+                imgHTML = "Koi image nahi mili.";
+            }
+            
+            document.getElementById('imageGallery').innerHTML = imgHTML;
+        } catch (e) {
+            document.getElementById('imageGallery').innerHTML = "Image load hone mein samasya aayi.";
+        }
+    }
+</script>
+
+</body>
+</html>
